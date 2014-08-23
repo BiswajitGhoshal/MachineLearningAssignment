@@ -1,0 +1,90 @@
+---
+title: "Data Science Specialization - Machine Learning - Course Assignment"
+author: "Biswajit Ghoshal"
+date: "Saturday, August 23, 2014"
+output: html_document
+---
+
+**Executive Summary **  
+This report is about developing a prediction model in R for predicting the manner in which six different individuals will perform exercises. The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+As instructed, the training dataset that has been used to develop the model and test it comes from : https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv.  Then the following steps have been performed to finalize the model.
+
+In this study, a few training models have been tried.  It has been found that with an LInear Discriminant Analysis(lda), about 58 main predictors (out of listed 158 predictors), the outcome (the 'exercise') can be predicted corectly about 85% of the time.  
+
+---------------------------------
+
+**Note :- as the R code-outputs are large and the write-up is self-explanatory, no plot was needed to be included **  
+
+**Data Loading, Exploration and Cleaning :- **  
+
+1. First the data is downloaded using "download.file()" within R-environment, loaded into the variable dat and a summary is viewed.  
+```{r load_data}
+dat <- read.csv("pml-training.csv")
+summary(dat)  
+```
+
+2. A careful study of the 'summary' output, reveal that out of total 160 variables, there are 101 variables, which hardly have any values (12th column, 'kurtosis_roll_belt'), or has meaningless information (like the un-named 1st column, 'X') or mostly contains 'NA' (like 18th column, 'max_roll_belt').  
+
+3. We keep only the useful 59 columns and with those create a new dataset called dat1, and view the summary. We then divide dat1 into a training set (tr) and a test set (tst) in 70:30 ratio, based on the outcome-variable (classe).
+
+```{r create_partition}
+library(caret)
+library(MASS)
+dat1 <- dat[,c("user_name","raw_timestamp_part_1","raw_timestamp_part_2","cvtd_timestamp",
+            "new_window","num_window","roll_belt","pitch_belt","yaw_belt","total_accel_belt",
+            "gyros_belt_x","gyros_belt_y","gyros_belt_z","accel_belt_x","accel_belt_y",
+            "accel_belt_z","magnet_belt_x","magnet_belt_y","magnet_belt_z","roll_arm",
+            "pitch_arm","yaw_arm","total_accel_arm","gyros_arm_x","gyros_arm_y","gyros_arm_z",
+            "accel_arm_x","accel_arm_y","accel_arm_z","magnet_arm_x","magnet_arm_y",
+            "magnet_arm_z","roll_dumbbell","pitch_dumbbell","yaw_dumbbell","total_accel_dumbbell"
+            ,"gyros_dumbbell_x","gyros_dumbbell_y","gyros_dumbbell_z","accel_dumbbell_x",
+            "accel_dumbbell_y","accel_dumbbell_z","magnet_dumbbell_x","magnet_dumbbell_y",
+            "magnet_dumbbell_z","roll_forearm","pitch_forearm","yaw_forearm",
+            "total_accel_forearm","gyros_forearm_x","gyros_forearm_y"
+            ,"gyros_forearm_z","accel_forearm_x","accel_forearm_y","accel_forearm_z",
+            "magnet_forearm_x","magnet_forearm_y","magnet_forearm_z","classe")]
+summary(dat1)  
+inT <- createDataPartition(y=dat1$classe, p=.7,list=FALSE)  
+tr <- dat1[inT,]  
+tst <- dat1[-inT,]  
+```  
+
+----------------------------
+
+**Trying different methods to find the best model :- **  
+
+4. When PreProcessing with "pca" was tried, that had yielded less than 60% accuracy.  
+
+5. Trials with methods 'rf' and 'nb' caused un-ending training-time, and had to be discarded.  
+
+6. We then try to train a model based on 'rpart' method.  And try to predict the the tst-dataset's outcomes, and check the confusionMatrix.  
+
+```{r try_rpart, cache=TRUE}
+fit <- train(tr$classe ~ ., method="rpart", data=tr)  
+```  
+``` {r show_confusion}
+confusionMatrix(tst$classe, predict(fit,tst))  
+```
+7. As Accuracy (from Overall Statistics section) is about 57%, a better model will be preferred.  So we try the 'lda' method.  
+
+```{r try_lda, cache=TRUE, echo=FALSE}
+fit <- train(tr$classe ~ ., method="lda", data=tr)  
+```  
+```{r show_confusion1}
+confusionMatrix(tst$classe, predict(fit,tst))  
+```
+
+--------------------------------
+
+**The uncertainty-level :- **  
+
+From the confusionMatrix we find that the accuracy level is more than 85% - which is quite acceptable.  So the model we finally choose is:-   
+``` {r show_model}
+fit   
+```  
+
+--------------------------------
+**Notes :- **  
+'Centering' and 'scaling' the numeric variables could have helped in getting better results - but that needs to be investigated.  
+
